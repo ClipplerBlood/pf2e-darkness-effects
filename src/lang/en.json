@@ -1,3 +1,21 @@
 {
-  "pf2e-darkness-effects": {}
+  "pf2e-darkness-effects": {
+    "settings": {
+      "chatMessageAlert": {
+        "name": "Chat Message Alerts"
+      },
+      "overrideDimlyLit": {
+        "name": "\"Dimly Lit\" Effect Override Item ID'",
+        "hint": "Enter the ID of an effect here to use instead of the bundled \"Dimly Lit\" effect."
+      },
+      "overrideInDarkness": {
+        "name": "\"In Darkness\" Effect Override Item ID",
+        "hint": "Enter the ID of an effect here to use instead of the bundled \"In Darkness\" effect."
+      },
+      "delay": {
+        "name": "Delay (ms)",
+        "hint": "Delay the execution of darkness effects after a token has been moved or the lightning changes."
+      }
+    }
+  }
 }
