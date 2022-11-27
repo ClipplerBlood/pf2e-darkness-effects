@@ -9,12 +9,15 @@ Hooks.once('init', async () => {
   registerSettings();
 });
 
-let timeout;
+let timeout; // Variable storing the current delayed function
 
+/* -------------------------------------------- */
+// HOOK on LIGHT CUD, updating all tokens
 Hooks.on('createAmbientLight', () => darknessTokenHook());
 Hooks.on('deleteAmbientLight', () => darknessTokenHook());
 Hooks.on('updateAmbientLight', () => darknessTokenHook());
 
+// HOOK on TOKEN CUD, updating the token if doesn't emit, otherwise all tokens
 Hooks.on('createToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('deleteToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
@@ -22,21 +25,26 @@ Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
   return darknessTokenHook(tokenDoc);
 });
 
+// HOOK on SCENE U, updating all tokens
 Hooks.on('updateScene', async (scene, _diff, _options, _userID) => {
   if (!game.user.isGM) return;
   if (scene === canvas.scene) return darknessTokenHook();
-  Hooks.once('canvasReady', async (newCanvas) => {
-    if (newCanvas !== scene) return;
-    await darknessTokenHook();
-  });
+  Hooks.once('canvasReady', () => darknessTokenHook());
 });
 
+// HOOK on ITEM U, checking if the item is owned and if it adds a TokenLight rule
 Hooks.on('updateItem', (item, diff, _options, _userId) => {
   if (!game.user.isGM) return;
   if (!item.parent && !diff.system?.rules?.some((rule) => rule.key === 'TokenLight')) return;
   darknessTokenHook();
 });
 
+/* -------------------------------------------- */
+
+/**
+ * Function that handles all the hooks, choosing between updating all tokens or only one
+ * @param {TokenDocument} tokenDoc if null, update all tokens
+ */
 function darknessTokenHook(tokenDoc = undefined) {
   if (!game.user.isGM) return;
   clearTimeout(timeout);
@@ -44,6 +52,11 @@ function darknessTokenHook(tokenDoc = undefined) {
   else timeout = setTimeout(async () => handleDarkness(tokenDoc), getDelay());
 }
 
+/**
+ * Handles the darkness effect for ALL tokens in the scene
+ * @param {Scene} scene if null, uses the currently viewed scene
+ * @return {Promise<void>}
+ */
 async function handleAllTokens(scene = undefined) {
   scene ??= game.scenes.viewed;
   for (const tokenDoc of scene.tokens) {
@@ -51,6 +64,11 @@ async function handleAllTokens(scene = undefined) {
   }
 }
 
+/**
+ * Handles the darkness effect for a SINGLE token
+ * @param {TokenDocument} tokenDoc
+ * @return {Promise<Actor|*>}
+ */
 async function handleDarkness(tokenDoc) {
   if (!game.user.isGM) return;
   const actor = tokenDoc.actor;
