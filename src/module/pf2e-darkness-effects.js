@@ -1,6 +1,6 @@
 import { registerSettings } from './settings.js';
 import { distance, getCollidingEmittingTokens, getCollidingLights, center, getDelay } from './utils.js';
-import { DARKNESS_LEVELS } from './const.js';
+import { ACTOR_TYPE_BLACKLIST, DARKNESS_LEVELS } from './const.js';
 import { setActorDarknessEffect, deleteActorDarknessEffect, shouldUpdateActorDarknessLevel } from './effects.js';
 
 // Initialize module
@@ -13,37 +13,35 @@ let timeout; // Variable storing the current delayed function
 
 /* -------------------------------------------- */
 // HOOK on LIGHT CUD, updating all tokens
-Hooks.on('createAmbientLight', () => darknessTokenHook());
-Hooks.on('deleteAmbientLight', () => darknessTokenHook());
-Hooks.on('updateAmbientLight', () => darknessTokenHook());
+Hooks.on('createAmbientLight', () => darknessTokenHook({}));
+Hooks.on('deleteAmbientLight', () => darknessTokenHook({}));
+Hooks.on('updateAmbientLight', () => darknessTokenHook({}));
 
-// HOOK on TOKEN CUD, updating the token if doesn't emit, otherwise all tokens
+// HOOK on TOKEN CUD, updating the token if it doesn't emit, otherwise all tokens
 Hooks.on('createToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('deleteToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
   if (!('x' in diff || 'y' in diff || diff.light != null)) return;
-  return darknessTokenHook(tokenDoc);
+  return darknessTokenHook({ tokenDoc });
 });
 
 // HOOK on SCENE U: when a scene gets ACTIVATED and is CURRENTLY VIEWED, force the token update
 Hooks.on('updateScene', async (scene, diff, _options, _userID) => {
   if (!game.user.isGM || !diff.active || canvas.scene !== scene) return;
-  clearTimeout(timeout);
-  setTimeout(async () => handleAllTokens(canvas.scene), getDelay());
+  darknessTokenHook({ scene });
 });
 
 // HOOK on CANVAS READY
 Hooks.on('canvasReady', (canvas) => {
   if (!game.user.isGM || !canvas.scene.active) return;
-  clearTimeout(timeout);
-  setTimeout(async () => handleAllTokens(canvas.scene), getDelay());
+  darknessTokenHook({ scene: canvas.scene });
 });
 
 // HOOK on ITEM U, checking if the item is owned and if it adds a TokenLight rule
 Hooks.on('updateItem', (item, diff, _options, _userId) => {
   if (!game.user.isGM) return;
   if (!item.parent && !diff.system?.rules?.some((rule) => rule.key === 'TokenLight')) return;
-  darknessTokenHook();
+  darknessTokenHook({});
 });
 
 /* -------------------------------------------- */
@@ -52,11 +50,12 @@ Hooks.on('updateItem', (item, diff, _options, _userId) => {
  * Function that handles all the hooks, choosing between updating all tokens or only one
  * @param {TokenDocument} tokenDoc if null, update all tokens
  */
-function darknessTokenHook(tokenDoc = undefined) {
+function darknessTokenHook({ tokenDoc = undefined, scene = undefined }) {
   if (!game.user.isGM) return;
   clearTimeout(timeout);
-  if (tokenDoc == null || tokenDoc.object.emitsLight) timeout = setTimeout(async () => handleAllTokens(), getDelay());
-  else timeout = setTimeout(async () => handleDarkness(tokenDoc), getDelay());
+  if (tokenDoc == null || tokenDoc.object.emitsLight)
+    timeout = setTimeout(async () => handleAllTokens(scene), getDelay());
+  else timeout = setTimeout(async () => handleDarkness(tokenDoc, scene), getDelay());
 }
 
 /**
@@ -67,7 +66,7 @@ function darknessTokenHook(tokenDoc = undefined) {
 async function handleAllTokens(scene = undefined) {
   scene ??= game.scenes.viewed;
   for (const tokenDoc of scene.tokens) {
-    await handleDarkness(tokenDoc);
+    await handleDarkness(tokenDoc, scene);
   }
 }
 
@@ -76,11 +75,11 @@ async function handleAllTokens(scene = undefined) {
  * @param {TokenDocument} tokenDoc
  * @return {Promise<Actor|*>}
  */
-async function handleDarkness(tokenDoc) {
+async function handleDarkness(tokenDoc, scene) {
   if (!game.user.isGM) return;
   const actor = tokenDoc.actor;
 
-  if (!shouldCheckDarkness()) {
+  if (!shouldCheckDarkness({ scene, tokenDoc })) {
     return deleteActorDarknessEffect(actor);
   }
 
@@ -122,10 +121,12 @@ function getDarknessLevel(tokenDoc) {
 /**
  * Returns true if the darkness level should be checked
  * @param scene
+ * @param tokenDoc
  * @return {boolean}
  */
-function shouldCheckDarkness(scene) {
+function shouldCheckDarkness({ scene, tokenDoc }) {
   scene ??= game.scenes.viewed;
+  if (ACTOR_TYPE_BLACKLIST.includes(tokenDoc?.actor?.type)) return false;
   const { tokenVision, globalLight, darkness, globalLightThreshold, hasGlobalThreshold } = scene;
   if (hasGlobalThreshold) return darkness > globalLightThreshold;
   return !globalLight || tokenVision;
