@@ -14,7 +14,7 @@
       },
       "delay": {
         "name": "Delay (ms)",
-        "hint": "Delay the execution of darkness effects after a token has been moved or the lightning changes."
+        "hint": "Delay the execution of darkness effects after a token has been moved or the lighting changes."
       }
     }
   }

@@ -24,7 +24,8 @@ export function distance(x1, y1, x2, y2) {
  * @returns {Set} The objects in the Quadtree which represent potential collisions
  */
 export function getCollidingLights(tokenObj) {
-  return canvas.lighting.quadtree.getObjects(tokenObj.bounds, { collisionTest: lightCollisionTest });
+  return canvas.lighting.objects.children.filter((o) => lightCollisionTest(o, tokenObj.bounds));
+  // return canvas.lighting.quadtree.getObjects(tokenObj.bounds, { collisionTest: lightCollisionTest });
 }
 
 /**
@@ -33,7 +34,8 @@ export function getCollidingLights(tokenObj) {
  * @returns {Set} The objects in the Quadtree which represent potential collisions
  */
 export function getCollidingEmittingTokens(tokenObj) {
-  return canvas.tokens.quadtree.getObjects(tokenObj.bounds, { collisionTest: lightCollisionTest });
+  return canvas.tokens.objects.children.filter((o) => lightCollisionTest(o, tokenObj.bounds));
+  // return canvas.tokens.quadtree.getObjects(tokenObj.bounds, { collisionTest: lightCollisionTest });
 }
 
 /**
@@ -44,7 +46,8 @@ export function getCollidingEmittingTokens(tokenObj) {
  */
 function lightCollisionTest(o, rect) {
   // Check if light emits
-  const light = o.t;
+  // const light = o.t;
+  const light = o;
   if (!light.emitsLight) return false;
 
   // Check if light is in line of sight
@@ -52,7 +55,7 @@ function lightCollisionTest(o, rect) {
   const { x, y } = center(rect);
   if (los && !los.contains(x, y)) return false;
 
-  const { x: lightX, y: lightY } = center(light);
+  const { x: lightX, y: lightY } = center(light.bounds);
   // Check if light is distant enough from the rect center
   const dist = distance(x, y, lightX, lightY);
   const radius = Math.max(light.dimRadius, light.brightRadius);

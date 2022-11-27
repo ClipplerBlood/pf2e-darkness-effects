@@ -1,7 +1,7 @@
 import { registerSettings } from './settings.js';
 import { distance, getCollidingEmittingTokens, getCollidingLights, center, getDelay } from './utils.js';
 import { DARKNESS_LEVELS } from './const.js';
-import { setActorDarknessEffect, deleteActorDarknessEffect, getActorDarknessLevel } from './effects.js';
+import { setActorDarknessEffect, deleteActorDarknessEffect, shouldUpdateActorDarknessLevel } from './effects.js';
 
 // Initialize module
 Hooks.once('init', async () => {
@@ -16,8 +16,8 @@ Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
   if (!('x' in diff || 'y' in diff || diff.light != null)) return;
 
   clearTimeout(timeout);
-  if (tokenDoc.object.emitsLight) timeout = setTimeout(() => handleAllTokens(), getDelay());
-  else timeout = setTimeout(() => handleDarkness(tokenDoc), getDelay());
+  if (tokenDoc.object.emitsLight) timeout = setTimeout(async () => handleAllTokens(), getDelay());
+  else timeout = setTimeout(async () => handleDarkness(tokenDoc), getDelay());
 });
 
 async function handleAllTokens(scene = undefined) {
@@ -36,7 +36,7 @@ async function handleDarkness(tokenDoc) {
   }
 
   const darknessLevel = getDarknessLevel(tokenDoc);
-  if (getActorDarknessLevel(actor) === darknessLevel) return;
+  if (!shouldUpdateActorDarknessLevel(actor, darknessLevel)) return;
   return setActorDarknessEffect(actor, darknessLevel);
 }
 

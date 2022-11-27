@@ -40,7 +40,7 @@ export async function setActorDarknessEffect(actor, darknessLevel) {
       },
     },
   };
-  await actor.createEmbeddedDocuments('Item', [createData]);
+  await Item.create(createData, { parent: actor });
   return actor;
 }
 
@@ -51,7 +51,7 @@ export async function setActorDarknessEffect(actor, darknessLevel) {
  * @return {Promise<Actor>}
  */
 export async function deleteActorDarknessEffect(actor, { skipFlag = false }) {
-  const darknessEffectsID = actor.itemTypes.effect.filter((e) => e.flags[moduleID]).map((e) => e.id);
+  const darknessEffectsID = actor.itemTypes.effect.filter((e) => e.flags[moduleID] != null).map((e) => e.id);
   if (darknessEffectsID) await actor.deleteEmbeddedDocuments('Item', darknessEffectsID);
   if (!skipFlag) await actor.unsetFlag(moduleID, 'darknessLevel');
   return actor;
@@ -64,4 +64,12 @@ export async function deleteActorDarknessEffect(actor, { skipFlag = false }) {
  */
 export function getActorDarknessLevel(actor) {
   return actor.getFlag(moduleID, 'darknessLevel') ?? -1;
+}
+
+export function shouldUpdateActorDarknessLevel(actor, newDarknessLevel) {
+  const isFlagSame = getActorDarknessLevel(actor) === newDarknessLevel;
+  const darknessEffects = actor.itemTypes.effect.filter((e) => e.flags[moduleID] != null);
+  const isEffectPresent = darknessEffects.some((e) => e.flags[moduleID]?.darknessLevel === newDarknessLevel);
+  const areOtherEffectAbsent = darknessEffects.every((e) => e.flags[moduleID]?.darknessLevel === newDarknessLevel);
+  return !(isFlagSame && isEffectPresent && areOtherEffectAbsent);
 }
