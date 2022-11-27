@@ -12,3 +12,5 @@ export const DARKNESS_LEVELS = {
 };
 
 export const DELAY = 1000;
+
+export const ACTOR_TYPE_BLACKLIST = ['loot', 'hazard', 'merchant'];

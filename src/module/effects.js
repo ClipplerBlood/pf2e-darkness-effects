@@ -47,13 +47,13 @@ export async function setActorDarknessEffect(actor, darknessLevel) {
 /**
  * Removes the actor effect and (optionally) flag
  * @param {Actor} actor
- * @param {boolean} skipFlag if to skip the deletion of flag
+ * @param options
  * @return {Promise<Actor>}
  */
-export async function deleteActorDarknessEffect(actor, { skipFlag = false }) {
+export async function deleteActorDarknessEffect(actor, options = { skipFlag: false }) {
   const darknessEffectsID = actor.itemTypes.effect.filter((e) => e.flags[moduleID] != null).map((e) => e.id);
   if (darknessEffectsID) await actor.deleteEmbeddedDocuments('Item', darknessEffectsID);
-  if (!skipFlag) await actor.unsetFlag(moduleID, 'darknessLevel');
+  if (!options.skipFlag) await actor.unsetFlag(moduleID, 'darknessLevel');
   return actor;
 }
 
