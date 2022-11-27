@@ -112,14 +112,29 @@ function getDarknessLevel(tokenDoc, scene) {
   collidingPlaceables = collidingPlaceables.map((p) => {
     const { x: px, y: py } = center(p.bounds);
     const dist = distance(cx, cy, px, py);
-    return { isInBrightRadius: dist <= p.brightRadius, isInDimRadius: dist <= p.dimRadius, placeable: p };
+    return {
+      isInBrightRadius: dist <= p.brightRadius,
+      isInDimRadius: dist <= p.dimRadius,
+      placeable: p,
+      isDarkness: p.isDarkness,
+    };
   });
 
-  // If bright or dim lights collide with the token, return BRIGHT or DIM. Otherwise, DARK
-  if (collidingPlaceables.some((p) => p.isInBrightRadius)) return DARKNESS_LEVELS['brightlyLit'];
-  if (isEmittingDimLight) return DARKNESS_LEVELS['dimlyLit'];
-  if (collidingPlaceables.some((p) => p.isInDimRadius)) return DARKNESS_LEVELS['dimlyLit'];
-  return getSceneDarkness(scene);
+  // Separate lights and darkLights
+  const lights = collidingPlaceables.filter((p) => !p.isDarkness);
+  const darkLights = collidingPlaceables.filter((p) => p.isDarkness);
+
+  // If bright or dim lights collide with the token, set BRIGHT or DIM. Otherwise, get the scene base light
+  let level;
+  if (lights.some((p) => p.isInBrightRadius)) level = DARKNESS_LEVELS['brightlyLit'];
+  else if (isEmittingDimLight) level = DARKNESS_LEVELS['dimlyLit'];
+  else if (lights.some((p) => p.isInDimRadius)) level = DARKNESS_LEVELS['dimlyLit'];
+  else level = getSceneDarkness(scene);
+
+  // If darkLights collide with bright radius, step down the darkness two levels, if dim radius, step down 1
+  if (darkLights.some((p) => p.isInBrightRadius)) level -= 2;
+  else if (darkLights.some((p) => p.isInDimRadius)) level -= 1;
+  return Math.max(level, 0);
 }
 
 /**
@@ -136,6 +151,9 @@ function shouldCheckDarkness({ scene, tokenDoc }) {
   scene ??= game.scenes.viewed;
   const { tokenVision, globalLight, darkness, globalLightThreshold, hasGlobalThreshold } = scene;
   const dimLightThreshold = game.settings.get(moduleID, 'dimLightThreshold');
+
+  // If the scene contains darkLights, then it must be considered
+  if (game.scenes.active.lights.some((l) => l.object.isDarkness)) return true;
 
   // Check if lighting conditions should be considered
   if (hasGlobalThreshold || dimLightThreshold) return darkness > globalLightThreshold || darkness >= dimLightThreshold;
@@ -154,11 +172,5 @@ function getSceneDarkness(scene) {
 
   if (darkness > globalLightThreshold) return DARKNESS_LEVELS['inDarkness'];
   if (darkness >= dimLightThreshold) return DARKNESS_LEVELS['dimlyLit'];
-  console.warn('pf2e-darkness-effects | Unexpected darkness value in scene, falling back to inDarkness', {
-    darkness,
-    globalLightThreshold,
-    dimLightThreshold,
-    scene,
-  });
-  return DARKNESS_LEVELS['inDarkness'];
+  return DARKNESS_LEVELS['brightlyLit'];
 }
