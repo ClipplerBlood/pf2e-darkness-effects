@@ -49,9 +49,11 @@ Hooks.on('updateItem', (item, diff, _options, _userId) => {
 /**
  * Function that handles all the hooks, choosing between updating all tokens or only one
  * @param {TokenDocument} tokenDoc if null, update all tokens
+ * @param scene
  */
 function darknessTokenHook({ tokenDoc = undefined, scene = undefined }) {
   if (!game.user.isGM) return;
+  scene ??= game.scenes.active;
   clearTimeout(timeout);
   if (tokenDoc == null || tokenDoc.object.emitsLight)
     timeout = setTimeout(async () => handleAllTokens(scene), getDelay());
@@ -73,6 +75,7 @@ export async function handleAllTokens(scene = undefined) {
 /**
  * Handles the darkness effect for a SINGLE token
  * @param {TokenDocument} tokenDoc
+ * @param scene
  * @return {Promise<Actor|*>}
  */
 async function handleDarkness(tokenDoc, scene) {
