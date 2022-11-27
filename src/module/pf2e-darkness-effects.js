@@ -27,10 +27,10 @@ Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
 
 // HOOK on SCENE U, updating all tokens
 Hooks.on('updateScene', async (scene, _diff, _options, _userID) => {
-  if (!game.user.isGM) return;
-  if (scene === canvas.scene) return darknessTokenHook();
+  if (!(game.user.isGM || scene.active || scene === canvas.scene)) return;
   Hooks.once('canvasReady', () => darknessTokenHook());
 });
+// Hooks.on('canvasReady', () => darknessTokenHook());
 
 // HOOK on ITEM U, checking if the item is owned and if it adds a TokenLight rule
 Hooks.on('updateItem', (item, diff, _options, _userId) => {
