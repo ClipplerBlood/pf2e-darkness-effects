@@ -11,14 +11,38 @@ Hooks.once('init', async () => {
 
 let timeout;
 
-Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
-  if (!game.user.isGM) return;
-  if (!('x' in diff || 'y' in diff || diff.light != null)) return;
+Hooks.on('createAmbientLight', () => darknessTokenHook());
+Hooks.on('deleteAmbientLight', () => darknessTokenHook());
+Hooks.on('updateAmbientLight', () => darknessTokenHook());
 
-  clearTimeout(timeout);
-  if (tokenDoc.object.emitsLight) timeout = setTimeout(async () => handleAllTokens(), getDelay());
-  else timeout = setTimeout(async () => handleDarkness(tokenDoc), getDelay());
+Hooks.on('createToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
+Hooks.on('deleteToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
+Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
+  if (!('x' in diff || 'y' in diff || diff.light != null)) return;
+  return darknessTokenHook(tokenDoc);
 });
+
+Hooks.on('updateScene', async (scene, _diff, _options, _userID) => {
+  if (!game.user.isGM) return;
+  if (scene === canvas.scene) return darknessTokenHook();
+  Hooks.once('canvasReady', async (newCanvas) => {
+    if (newCanvas !== scene) return;
+    await darknessTokenHook();
+  });
+});
+
+Hooks.on('updateItem', (item, diff, _options, _userId) => {
+  if (!game.user.isGM) return;
+  if (!item.parent && !diff.system?.rules?.some((rule) => rule.key === 'TokenLight')) return;
+  darknessTokenHook();
+});
+
+function darknessTokenHook(tokenDoc = undefined) {
+  if (!game.user.isGM) return;
+  clearTimeout(timeout);
+  if (tokenDoc == null || tokenDoc.object.emitsLight) timeout = setTimeout(async () => handleAllTokens(), getDelay());
+  else timeout = setTimeout(async () => handleDarkness(tokenDoc), getDelay());
+}
 
 async function handleAllTokens(scene = undefined) {
   scene ??= game.scenes.viewed;
@@ -58,7 +82,7 @@ function getDarknessLevel(tokenDoc) {
   const { x: cx, y: cy } = center(tokenObj.bounds);
   let collidingPlaceables = new Set([...getCollidingLights(tokenObj), ...getCollidingEmittingTokens(tokenObj)]);
   collidingPlaceables = collidingPlaceables.map((p) => {
-    const { x: px, y: py } = center(p);
+    const { x: px, y: py } = center(p.bounds);
     const dist = distance(cx, cy, px, py);
     return { isInBrightRadius: dist <= p.brightRadius, isInDimRadius: dist <= p.dimRadius, placeable: p };
   });
