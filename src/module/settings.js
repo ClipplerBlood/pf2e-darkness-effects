@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { moduleID } from './const.js';
+import { handleAllTokens } from './pf2e-darkness-effects.js';
 
 export function registerSettings() {
   // Register any custom module settings here
@@ -45,5 +46,16 @@ export function registerSettings() {
     config: true,
     type: String,
     default: '',
+  });
+
+  game.settings.register(moduleID, 'dimLightThreshold', {
+    name: 'pf2e-darkness-effects.settings.dimLightThreshold.name',
+    hint: 'pf2e-darkness-effects.settings.dimLightThreshold.hint',
+    scope: 'world',
+    config: true,
+    type: Number,
+    default: 0.6,
+    onchange: () => handleAllTokens(),
+    range: { min: 0, max: 1, step: 0.05 },
   });
 }

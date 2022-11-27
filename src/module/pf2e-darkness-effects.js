@@ -1,6 +1,6 @@
 import { registerSettings } from './settings.js';
 import { distance, getCollidingEmittingTokens, getCollidingLights, center, getDelay } from './utils.js';
-import { ACTOR_TYPE_BLACKLIST, DARKNESS_LEVELS } from './const.js';
+import { ACTOR_TYPE_BLACKLIST, DARKNESS_LEVELS, moduleID } from './const.js';
 import { setActorDarknessEffect, deleteActorDarknessEffect, shouldUpdateActorDarknessLevel } from './effects.js';
 
 // Initialize module
@@ -63,8 +63,8 @@ function darknessTokenHook({ tokenDoc = undefined, scene = undefined }) {
  * @param {Scene} scene if null, uses the currently viewed scene
  * @return {Promise<void>}
  */
-async function handleAllTokens(scene = undefined) {
-  scene ??= game.scenes.viewed;
+export async function handleAllTokens(scene = undefined) {
+  scene ??= game.scenes.active;
   for (const tokenDoc of scene.tokens) {
     await handleDarkness(tokenDoc, scene);
   }
@@ -83,7 +83,7 @@ async function handleDarkness(tokenDoc, scene) {
     return deleteActorDarknessEffect(actor);
   }
 
-  const darknessLevel = getDarknessLevel(tokenDoc);
+  const darknessLevel = getDarknessLevel(tokenDoc, scene);
   if (!shouldUpdateActorDarknessLevel(actor, darknessLevel)) return;
   return setActorDarknessEffect(actor, darknessLevel);
 }
@@ -92,11 +92,12 @@ async function handleDarkness(tokenDoc, scene) {
  * Returns the darkness level of the token, based on if:
  * - The token emits light
  * - The token intersect a light source (light or another token)
- * Additionally the level is determined if the light source is
+ * Additionally the level is determined if the light source emits dark light, and based on the scene dim light threshold
  * @param tokenDoc
+ * @param scene
  * @return {number}
  */
-function getDarknessLevel(tokenDoc) {
+function getDarknessLevel(tokenDoc, scene) {
   // If the token emits bright light return BRIGHT
   const tokenObj = tokenDoc.object;
   if (tokenObj.emitsLight && tokenObj.brightRadius > 0) return DARKNESS_LEVELS['brightlyLit'];
@@ -115,7 +116,7 @@ function getDarknessLevel(tokenDoc) {
   if (collidingPlaceables.some((p) => p.isInBrightRadius)) return DARKNESS_LEVELS['brightlyLit'];
   if (isEmittingDimLight) return DARKNESS_LEVELS['dimlyLit'];
   if (collidingPlaceables.some((p) => p.isInDimRadius)) return DARKNESS_LEVELS['dimlyLit'];
-  return DARKNESS_LEVELS['inDarkness'];
+  return getSceneDarkness(scene);
 }
 
 /**
@@ -125,9 +126,36 @@ function getDarknessLevel(tokenDoc) {
  * @return {boolean}
  */
 function shouldCheckDarkness({ scene, tokenDoc }) {
-  scene ??= game.scenes.viewed;
+  // Filter out actor types
   if (ACTOR_TYPE_BLACKLIST.includes(tokenDoc?.actor?.type)) return false;
+
+  // Grab data
+  scene ??= game.scenes.viewed;
   const { tokenVision, globalLight, darkness, globalLightThreshold, hasGlobalThreshold } = scene;
-  if (hasGlobalThreshold) return darkness > globalLightThreshold;
+  const dimLightThreshold = game.settings.get(moduleID, 'dimLightThreshold');
+
+  // Check if lighting conditions should be considered
+  if (hasGlobalThreshold || dimLightThreshold) return darkness > globalLightThreshold || darkness >= dimLightThreshold;
   return !globalLight || tokenVision;
+}
+
+/**
+ * Returns the scene BASE darkness, determined by the global light threshold and the custom dim light threshold setting
+ * @param scene
+ * @return {number}
+ */
+function getSceneDarkness(scene) {
+  const darkness = scene.darkness;
+  const globalLightThreshold = scene.globalLightThreshold;
+  const dimLightThreshold = game.settings.get(moduleID, 'dimLightThreshold');
+
+  if (darkness > globalLightThreshold) return DARKNESS_LEVELS['inDarkness'];
+  if (darkness >= dimLightThreshold) return DARKNESS_LEVELS['dimlyLit'];
+  console.warn('pf2e-darkness-effects | Unexpected darkness value in scene, falling back to inDarkness', {
+    darkness,
+    globalLightThreshold,
+    dimLightThreshold,
+    scene,
+  });
+  return DARKNESS_LEVELS['inDarkness'];
 }

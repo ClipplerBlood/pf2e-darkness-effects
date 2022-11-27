@@ -15,6 +15,10 @@
       "delay": {
         "name": "Delay (ms)",
         "hint": "Delay the execution of darkness effects after a token has been moved or the lighting changes."
+      },
+      "dimLightThreshold": {
+        "name": "Dim Light Threshold",
+        "hint": "If the Darkness is equal or below the defined Dim Light Threshold but above the Darkness Threshold, everyone who would be in Bright Light due to Global Illumination would instead be in Dim Light."
       }
     }
   }
