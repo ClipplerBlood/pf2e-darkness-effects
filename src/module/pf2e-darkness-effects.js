@@ -21,7 +21,7 @@ Hooks.on('updateAmbientLight', () => darknessTokenHook({}));
 Hooks.on('createToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('deleteToken', (tokenDoc, _options, _userId) => darknessTokenHook(tokenDoc));
 Hooks.on('updateToken', (tokenDoc, diff, _options, _userID) => {
-  if (!('x' in diff || 'y' in diff || diff.light != null)) return;
+  if (!('x' in diff || 'y' in diff || (diff.light && Object.keys(diff.light).length))) return;
   return darknessTokenHook({ tokenDoc });
 });
 

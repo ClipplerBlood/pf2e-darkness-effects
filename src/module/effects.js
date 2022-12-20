@@ -52,8 +52,9 @@ export async function setActorDarknessEffect(actor, darknessLevel) {
  */
 export async function deleteActorDarknessEffect(actor, options = { skipFlag: false }) {
   const darknessEffectsID = actor.itemTypes.effect.filter((e) => e.flags[moduleID] != null).map((e) => e.id);
-  if (darknessEffectsID) await actor.deleteEmbeddedDocuments('Item', darknessEffectsID);
-  if (!options.skipFlag) await actor.unsetFlag(moduleID, 'darknessLevel');
+  if (darknessEffectsID.length) await actor.deleteEmbeddedDocuments('Item', darknessEffectsID);
+  if (!options.skipFlag && actor.getFlag(moduleID, 'darknessLevel') != null)
+    await actor.unsetFlag(moduleID, 'darknessLevel');
   return actor;
 }
 
