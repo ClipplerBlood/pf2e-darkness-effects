@@ -86,9 +86,9 @@ async function handleDarkness(tokenDoc, scene) {
     return deleteActorDarknessEffect(actor);
   }
 
-  const darknessLevel = getDarknessLevel(tokenDoc, scene);
-  if (!shouldUpdateActorDarknessLevel(actor, darknessLevel)) return;
-  return setActorDarknessEffect(actor, darknessLevel);
+  const { darknessLevel, isInDarkLight } = getDarknessLevel(tokenDoc, scene);
+  if (!shouldUpdateActorDarknessLevel(actor, darknessLevel, isInDarkLight)) return;
+  return setActorDarknessEffect(actor, darknessLevel, isInDarkLight);
 }
 
 /**
@@ -98,7 +98,7 @@ async function handleDarkness(tokenDoc, scene) {
  * Additionally the level is determined if the light source emits dark light, and based on the scene dim light threshold
  * @param tokenDoc
  * @param scene
- * @return {number}
+ * @return {Object} darknessLevel: the darknessLevel, isInDarkLight: boolean flag if the token is in a dark light
  */
 function getDarknessLevel(tokenDoc, scene) {
   // If the token emits bright light return BRIGHT
@@ -134,7 +134,7 @@ function getDarknessLevel(tokenDoc, scene) {
   // If darkLights collide with bright radius, step down the darkness two levels, if dim radius, step down 1
   if (darkLights.some((p) => p.isInBrightRadius)) level -= 2;
   else if (darkLights.some((p) => p.isInDimRadius)) level -= 1;
-  return Math.max(level, 0);
+  return { darknessLevel: Math.max(level, 0), isInDarkLight: darkLights.size > 0 };
 }
 
 /**

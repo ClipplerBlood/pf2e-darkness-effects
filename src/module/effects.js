@@ -4,12 +4,14 @@ import { DARKNESS_LEVELS, effectCompendiumIDmap, moduleID } from './const.js';
  * Adds/updates the actor effect and flag
  * @param {Actor} actor
  * @param {Number} darknessLevel
+ * @param {bool} isInDarkLight
  * @return {Promise<*>}
  */
-export async function setActorDarknessEffect(actor, darknessLevel) {
+export async function setActorDarknessEffect(actor, darknessLevel, isInDarkLight) {
   // Delete the old effects and set the flag
   await deleteActorDarknessEffect(actor, { skipFlag: true });
   await actor.setFlag(moduleID, 'darknessLevel', darknessLevel);
+  await actor.setFlag(moduleID, 'isInDarkLight', isInDarkLight);
 
   // Grab the appropriate effect from the compendium or overrides
   let settingID, override;
@@ -55,6 +57,8 @@ export async function deleteActorDarknessEffect(actor, options = { skipFlag: fal
   if (darknessEffectsID.length) await actor.deleteEmbeddedDocuments('Item', darknessEffectsID);
   if (!options.skipFlag && actor.getFlag(moduleID, 'darknessLevel') != null)
     await actor.unsetFlag(moduleID, 'darknessLevel');
+  if (!options.skipFlag && actor.getFlag(moduleID, 'isInDarkLight') != null)
+    await actor.unsetFlag(moduleID, 'isInDarkLight');
   return actor;
 }
 
@@ -67,10 +71,11 @@ export function getActorDarknessLevel(actor) {
   return actor.getFlag(moduleID, 'darknessLevel') ?? -1;
 }
 
-export function shouldUpdateActorDarknessLevel(actor, newDarknessLevel) {
-  const isFlagSame = getActorDarknessLevel(actor) === newDarknessLevel;
+export function shouldUpdateActorDarknessLevel(actor, newDarknessLevel, newDarkLightFlag) {
+  const isDarknessFlagSame = getActorDarknessLevel(actor) === newDarknessLevel;
+  const isDarkLightFlagSame = actor.getFlag(moduleID, 'isInDarkLight') === newDarkLightFlag;
   const darknessEffects = actor.itemTypes.effect.filter((e) => e.flags[moduleID] != null);
   const isEffectPresent = darknessEffects.some((e) => e.flags[moduleID]?.darknessLevel === newDarknessLevel);
   const areOtherEffectAbsent = darknessEffects.every((e) => e.flags[moduleID]?.darknessLevel === newDarknessLevel);
-  return !(isFlagSame && isEffectPresent && areOtherEffectAbsent);
+  return !(isDarknessFlagSame && isDarkLightFlagSame && isEffectPresent && areOtherEffectAbsent);
 }
